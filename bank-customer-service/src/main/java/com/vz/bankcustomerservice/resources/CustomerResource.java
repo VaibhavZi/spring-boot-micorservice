@@ -4,6 +4,7 @@
 package com.vz.bankcustomerservice.resources;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,9 +21,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
-import com.vz.bankcustomerservice.domain.Bank;
-import com.vz.bankcustomerservice.domain.Branch;
-import com.vz.bankcustomerservice.domain.Customer;
+import com.vz.bankcustomerservice.RequestHeaderValidator;
+import com.vz.bankcustomerservice.domain.*;
 import com.vz.bankcustomerservice.service.CustomerService;
 
 /**
@@ -35,6 +35,9 @@ import com.vz.bankcustomerservice.service.CustomerService;
 public class CustomerResource {
 
 	@Autowired
+	RequestHeaderValidator validator;
+
+	@Autowired
 	@LoadBalanced
 	RestTemplate restTemplate;
 
@@ -45,17 +48,24 @@ public class CustomerResource {
 	CustomerService customerService;
 
 	@GetMapping(path = "/bank/{bankId}/customers")
-	public List<Customer> getAllCustomersForBank(@PathVariable("bankId") int bankCode) {
+	public ResponseEntity<List<Customer>> getAllCustomersForBank(@PathVariable("bankId") int bankCode) {
 		List<Customer> allCustomers = null;
 		Bank bank = null;
 		if (isBankValidationRequired) {
-			bank = restTemplate.getForObject("http://bank-service/bank/" + bankCode, Bank.class);
+			try {
+				bank = restTemplate.getForObject("http://bank-service/bank/" + bankCode, Bank.class);
+			} catch (Exception exception) {
+				System.out.println("bank not found");
+				return new ResponseEntity<List<Customer>>(HttpStatus.NOT_FOUND);
+			}
 		}
 		if (isBankValidationRequired && bank == null) {
-			return null;
+			return new ResponseEntity<List<Customer>>(HttpStatus.NOT_FOUND);
 		} else
 			allCustomers = customerService.getAllCustomers();
-		return allCustomers;
+		allCustomers = allCustomers.stream().filter(cust -> cust.getBankCode() == bankCode)
+				.collect(Collectors.toList());
+		return new ResponseEntity<List<Customer>>(allCustomers, HttpStatus.ACCEPTED);
 	}
 
 	@GetMapping(path = "/customerinfo/bank/{bankId}/{customerId}")
@@ -88,7 +98,7 @@ public class CustomerResource {
 
 	@PostMapping(path = "/customer", consumes = "application/json", produces = "application/jason")
 	public ResponseEntity<Customer> addNewCustomer(@RequestBody Customer customer) {
-		if (customer.getBankCode() != null && customer.getBranchId() != null) {
+		if (customer.getBankCode()==0 && customer.getBranchId() != null) {
 			// Check if bank and branch are valid by calling a service available for branch
 			// enquire
 			Branch branchInfo = null;
@@ -109,8 +119,14 @@ public class CustomerResource {
 	public ResponseEntity<Customer> deleteCustomerInformation(@PathVariable("bankId") int bankId,
 			@PathVariable("branchId") String branchId, @PathVariable("customerId") int customerId) {
 		// lookup branch info if it is correct
-		Branch branchInfo = restTemplate
-				.getForObject("http://bank-branch-service/bank" + bankId + "/branch/" + branchId, Branch.class);
+		Branch branchInfo = null;
+		try {
+			branchInfo = restTemplate.getForObject("http://bank-branch-service/bank" + bankId + "/branch/" + branchId,
+					Branch.class);
+		} catch (Exception exception) {
+			System.out.println(exception.getStackTrace());
+			return new ResponseEntity<Customer>(HttpStatus.FORBIDDEN);
+		}
 		if (branchInfo != null) {
 			customerService.delete(customerId);
 			return new ResponseEntity<Customer>(HttpStatus.OK);
