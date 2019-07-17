@@ -7,8 +7,7 @@ import java.security.SecureRandom;
 
 public class HashService {
 	
-	public static String getHashPassword(String passwordToHash)throws NoSuchAlgorithmException, NoSuchProviderException{
-		String saltForRequester = "ToBeWorkedOn";
+	public static String getHashPassword(String passwordToHash, String saltForRequester)throws NoSuchAlgorithmException, NoSuchProviderException{
 		byte[] salt = getSalt(saltForRequester);
 		String securePassword = getSecurePassword(passwordToHash, salt);
 		return securePassword;
@@ -27,7 +26,7 @@ public class HashService {
 			// Convert it to hexadecimal format
 			StringBuffer sb = new StringBuffer();
 			for(int i=0; i< bytes.length; i++) {
-				sb.append(Integer.toString((bytes[i]& 0xff)+0x100,16).substring(1));
+				sb.append(Integer.toString((bytes[i]& 0xff)+0x100,32).substring(1));
 			
 			// get comlete hashed password in hex format
 				generatedHashPassword = sb.toString();
@@ -44,14 +43,4 @@ public class HashService {
 		salt1 = salt.getBytes();
 		return salt1;
 	}
-	
-	
-	public static void main(String[] args) {
-		try {
-		System.out.println(HashService.getHashPassword("8055978121"));
-		}catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
 }
