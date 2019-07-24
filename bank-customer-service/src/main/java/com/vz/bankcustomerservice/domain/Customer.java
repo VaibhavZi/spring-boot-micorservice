@@ -31,7 +31,7 @@ public class Customer implements Serializable{
 	private int customerNumber;
 	
 	@Column(name="bank_code")
-	private String bankCode;
+	private int bankCode;
 	@Column(name="Branch_id")
 	private String BranchId;
 	@Column(name="first_name")
@@ -79,10 +79,10 @@ public class Customer implements Serializable{
 	public void setCustomerNumber(int customerNumber) {
 		this.customerNumber = customerNumber;
 	}
-	public String getBankCode() {
+	public int getBankCode() {
 		return bankCode;
 	}
-	public void setBankCode(String bankCode) {
+	public void setBankCode(int bankCode) {
 		this.bankCode = bankCode;
 	}
 	public String getBranchId() {
